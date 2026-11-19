@@ -76,6 +76,35 @@ fun helpers => {
     siemens_per_square_cm | Number,
   },
 
+  # Where a model input's values come from. Each fills the input tensor in row-major order.
+  ModelInput = helpers.Tagged {
+    Voltages = {
+      type | Dyn,
+      offset_mv | Number,
+      scale | Number,
+      taps | Array (SegmentRef),
+    },
+    Time = {
+      type | Dyn,
+    },
+    Constant = {
+      type | Dyn,
+      values | Array (Number),
+    },
+  },
+
+  # What a model output drives.
+  ModelOutput = helpers.Tagged {
+    InjectCurrent = {
+      type | Dyn,
+      scale_uamps_per_square_cm | Number,
+      taps | Array (SegmentRef),
+    },
+    Ignore = {
+      type | Dyn,
+    },
+  },
+
   Neuron = {
     membranes | Array (Membrane),
     segments | Array (Segment),
@@ -87,8 +116,17 @@ fun helpers => {
   },
 
   Scene = {
+    models | Array (SceneModel) | doc "ONNX models coupled to the simulation." | optional,
     neurons | Array (SceneNeuron),
     synapses | Array (Synapse),
+  },
+
+  # An ONNX model that reads simulation state and drives the simulation. Graph inputs and outputs bind, in order, to `inputs` and `outputs`.
+  SceneModel = {
+    inputs | Array (ModelInput) | doc "One entry per graph input, in graph order.",
+    interval_sec | Number | doc "Simulated seconds between evaluations. Models run at most once per frame.",
+    outputs | Array (ModelOutput) | doc "One entry per graph output, in graph order.",
+    url | String | doc "The `.onnx` file: a URL, or a path relative to the root scene file.",
   },
 
   SceneNeuron = {
@@ -105,6 +143,12 @@ fun helpers => {
     x | Number,
     y | Number,
     z | Number,
+  },
+
+  # A segment in the scene: an index into `neurons`, and the segment's SWC id (as in `stimulator_segments`).
+  SegmentRef = {
+    neuron | std.number.Integer,
+    segment | std.number.Integer,
   },
 
   Sensitivity = {
