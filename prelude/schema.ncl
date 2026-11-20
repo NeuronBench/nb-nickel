@@ -91,6 +91,10 @@ fun helpers => {
       type | Dyn,
       values | Array (Number),
     },
+    Feedback = {
+      type | Dyn,
+      output | String,
+    },
   },
 
   # What a model output drives.
