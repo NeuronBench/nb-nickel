@@ -104,6 +104,19 @@ fun helpers => {
       scale_uamps_per_square_cm | Number,
       taps | Array (SegmentRef),
     },
+    ScaleConductance = {
+      type | Dyn,
+      channel | helpers.Nullable (std.number.Integer) | optional,
+      offset | Number,
+      scale | Number,
+      taps | Array (SegmentRef),
+    },
+    SynapticGain = {
+      type | Dyn,
+      offset | Number,
+      scale | Number,
+      synapses | Array (std.number.Integer),
+    },
     Ignore = {
       type | Dyn,
     },
