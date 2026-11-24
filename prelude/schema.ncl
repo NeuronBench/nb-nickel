@@ -2,6 +2,16 @@
 # Source of truth: src/serialize.rs in nb-sim.
 # Regenerate with: cargo run --bin gen_nickel_schema
 fun helpers => {
+  # A grid of current injections, one cell per segment, painted with the mouse in the Canvas window: left-drag raises a cell, right-drag lowers it. Cells range over -1..1; a cell at 1 injects `max_uamps_per_square_cm` into its segment.
+  Canvas = {
+    height | std.number.Integer,
+    initial | Array (Number) | doc "Starting cell values in -1..1, row-major; empty for all zeros." | optional,
+    max_uamps_per_square_cm | Number,
+    name | String | doc "Shown as the window title; the painting is kept across reloads while the name and size stay the same.",
+    taps | Array (SegmentRef) | doc "The segment under each cell, row-major (`width * height` of them).",
+    width | std.number.Integer,
+  },
+
   Channel = {
     activation | helpers.Nullable (GatingParameters) | optional,
     inactivation | helpers.Nullable (GatingParameters) | optional,
@@ -46,6 +56,13 @@ fun helpers => {
     min_molar | Number,
     slope | Number,
     v_at_half_max_mv | Number,
+  },
+
+  # Drive the simulation from part of an intermediate value of a model.
+  HiddenTap = {
+    elements | Array (std.number.Integer) | doc "Flat (row-major) indices into the value: element `elements[i]` drives target i of `output`.",
+    output | ModelOutput,
+    value | String | doc "The value's name, as the Models window shows it (`conv2d1`, `relu2`).",
   },
 
   IonSelectivity = {
@@ -133,6 +150,7 @@ fun helpers => {
   },
 
   Scene = {
+    canvases | Array (Canvas) | doc "Grids of injected current painted in the Canvas window." | optional,
     models | Array (SceneModel) | doc "ONNX models coupled to the simulation." | optional,
     neurons | Array (SceneNeuron),
     synapses | Array (Synapse),
@@ -140,6 +158,7 @@ fun helpers => {
 
   # An ONNX model that reads simulation state and drives the simulation. Graph inputs and outputs bind, in order, to `inputs` and `outputs`.
   SceneModel = {
+    hidden | Array (HiddenTap) | doc "Extra sinks fed from intermediate values (hidden layers)." | optional,
     inputs | Array (ModelInput) | doc "One entry per graph input, in graph order.",
     interval_sec | Number | doc "Simulated seconds between evaluations. Models run at most once per frame.",
     outputs | Array (ModelOutput) | doc "One entry per graph output, in graph order.",
