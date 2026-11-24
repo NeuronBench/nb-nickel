@@ -2,6 +2,24 @@
 # Source of truth: src/serialize.rs in nb-sim.
 # Regenerate with: cargo run --bin gen_nickel_schema
 fun helpers => {
+  BindingKinetics = {
+    decay_sec | Number | doc "Time constant while it falls (unbinding).",
+    rise_sec | Number | doc "Time constant while the bound fraction grows.",
+  },
+
+  # The Graupner–Brunel (2012) calcium rule. The synapse's efficacy `rho` (0..1) follows `tau d(rho)/dt = -bistability rho (1 - rho) (1/2 - rho)   + potentiation_rate (1 - rho) [Ca > potentiation_threshold]   - depression_rate rho [Ca > depression_threshold]`, and receptors marked `plastic` have their conductance scaled by `weight_at_0 + rho (weight_at_1 - weight_at_0)`: AMPA receptors inserted or removed. Brief, moderate calcium (a presynaptic spike alone, or a postsynaptic spike before it) depresses; the large calcium of a presynaptic spike followed by a postsynaptic one (NMDA receptors bound and unblocked together) potentiates.
+  CalciumPlasticity = {
+    bistability | Number | doc "Strength of the pull toward rho = 0 or 1 (0 for none).",
+    depression_rate | Number,
+    depression_threshold_molar | Number,
+    initial_efficacy | Number,
+    potentiation_rate | Number,
+    potentiation_threshold_molar | Number,
+    time_constant_sec | Number,
+    weight_at_0 | Number,
+    weight_at_1 | Number,
+  },
+
   # A grid of current injections, one cell per segment, painted with the mouse in the Canvas window: left-drag raises a cell, right-drag lowers it. Cells range over -1..1; a cell at 1 injects `max_uamps_per_square_cm` into its segment.
   Canvas = {
     height | std.number.Integer,
@@ -78,6 +96,11 @@ fun helpers => {
     z_mm | Number,
   },
 
+  # Jahr & Stevens (1990): the conductance is multiplied by `1 / (1 + [Mg2+] / 3.57 mM * exp(-0.062 / mV * V))`.
+  MagnesiumBlock = {
+    magnesium_molar | Number,
+  },
+
   Magnitude = {
     slope | Number,
     v_at_half_max_mv | Number,
@@ -145,8 +168,11 @@ fun helpers => {
   },
 
   Receptor = {
+    binding | helpers.Nullable (BindingKinetics) | doc "How fast transmitter binds and unbinds: the bound fraction relaxes toward the sensitivity curve with these time constants. Without it, binding follows the cleft at once." | optional,
+    magnesium_block | helpers.Nullable (MagnesiumBlock) | doc "Voltage-dependent Mg2+ block of the pore (as in NMDA receptors)." | optional,
     membrane_channel | MembraneChannel,
     neurotransmitter_sensitivity | Sensitivity,
+    plastic | Bool | doc "Scale this receptor's conductance by the synapse's plastic weight." | optional,
   },
 
   Scene = {
@@ -219,11 +245,20 @@ fun helpers => {
   },
 
   SynapseMembranes = {
+    calcium | helpers.Nullable (SynapticCalcium) | doc "A Ca2+ pool in the postsynaptic spine, fed by the receptors' calcium current (an NMDA receptor's, say)." | optional,
     cleft_solution | Solution,
+    plasticity | helpers.Nullable (CalciumPlasticity) | doc "Calcium-driven change of the synapse's strength. Needs `calcium`." | optional,
     postsynaptic_receptors | Array (Receptor),
     presynaptic_pumps | Array (TransmitterPump),
     surface_area_square_mm | Number,
     transmitter_concentrations | TransmitterConcentrations,
+  },
+
+  # Spine calcium: `d[Ca]/dt = ([Ca]_rest - [Ca]) / decay - I_Ca / (2 F V)`, with `I_Ca` the calcium part of the receptors' current (inward is negative) and `V` the spine volume.
+  SynapticCalcium = {
+    decay_sec | Number,
+    resting_molar | Number,
+    spine_volume_cubic_um | Number,
   },
 
   TimeConstant = helpers.Tagged {
