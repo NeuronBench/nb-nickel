@@ -226,6 +226,18 @@ fun helpers => {
     na | Number,
   },
 
+  # Phenomenological, pair-based STDP (nearest spike, soft bounds). A spike is an upward crossing of `spike_threshold_mv` by the pre- or postsynaptic segment. Each spike sets its side's trace to 1, which then decays with `pre_trace_sec` (presynaptic) or `post_trace_sec` (postsynaptic). On a postsynaptic spike the efficacy `rho` (0..1) gains `potentiation * (1 - rho) * pre_trace`; on a presynaptic spike it loses `depression * rho * post_trace`. So a presynaptic spike shortly before a postsynaptic one strengthens the synapse, and one shortly after weakens it, each by an amount that falls off exponentially with the delay. Receptors marked `plastic` have their conductance scaled by `weight_at_0 + rho (weight_at_1 - weight_at_0)`.
+  SpikeTimingPlasticity = {
+    depression | Number,
+    initial_efficacy | Number,
+    post_trace_sec | Number,
+    potentiation | Number,
+    pre_trace_sec | Number,
+    spike_threshold_mv | Number,
+    weight_at_0 | Number,
+    weight_at_1 | Number,
+  },
+
   Stimulator = {
     current_shape | CurrentShape,
     envelope | Envelope,
@@ -250,6 +262,7 @@ fun helpers => {
     plasticity | helpers.Nullable (CalciumPlasticity) | doc "Calcium-driven change of the synapse's strength. Needs `calcium`." | optional,
     postsynaptic_receptors | Array (Receptor),
     presynaptic_pumps | Array (TransmitterPump),
+    spike_timing | helpers.Nullable (SpikeTimingPlasticity) | doc "Pair-based spike-timing-dependent plasticity, an alternative to `plasticity` that needs no calcium." | optional,
     surface_area_square_mm | Number,
     transmitter_concentrations | TransmitterConcentrations,
   },
