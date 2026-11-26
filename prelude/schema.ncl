@@ -270,7 +270,7 @@ fun helpers => {
     stimulator | Stimulator,
   },
 
-  # Supervised spike-based learning in the manner of ReSuMe (Ponulak & Kasinski 2010), with a target firing rate as the teacher. Each presynaptic spike adds 1 to a trace that decays with `pre_trace_sec`. While the postsynaptic segment has a target rate (a model's `TargetRate` output), the efficacy `rho` (0..1) grows by `learning_rate * pre_trace * target_hz * dt` and falls by `learning_rate * pre_trace` at each postsynaptic spike, so on average `d rho/dt = learning_rate * pre_trace * (target - actual rate)`: the delta rule, which stops once the cell fires as the teacher asks. Without a target nothing is learned. Receptors marked `plastic` have their conductance scaled by `weight_at_0 + rho (weight_at_1 - weight_at_0)`.
+  # Supervised spike-based learning in the manner of ReSuMe (Ponulak & Kasinski 2010), with a target firing rate as the teacher. Each presynaptic spike adds 1 to a trace that decays with `pre_trace_sec`. While the postsynaptic segment has a target rate (a model's `TargetRate` output), the efficacy `rho` (0..1) grows by `learning_rate * pre_trace * target_hz * dt` and falls by `learning_rate * pre_trace` at each postsynaptic spike, so on average `d rho/dt = learning_rate * pre_trace * (target - actual rate)`: the delta rule, which stops once the cell fires as the teacher asks. Without a target nothing is learned. Receptors marked `plastic` have their conductance scaled by `weight_at_0 + rho (weight_at_1 - weight_at_0)`. For an inhibitory synapse use a negative `learning_rate`: it then strengthens while the cell fires above its target, and weakens while the cell fires below it.
   SupervisedPlasticity = {
     initial_efficacy | Number,
     learning_rate | Number,
