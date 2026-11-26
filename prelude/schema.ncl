@@ -22,8 +22,11 @@ fun helpers => {
 
   # A grid of current injections, one cell per segment, painted with the mouse in the Canvas window: left-drag raises a cell, right-drag lowers it. Cells range over -1..1; a cell at 1 injects `max_uamps_per_square_cm` into its segment.
   Canvas = {
+    frame_sec | Number | optional,
+    frames | Array (Array (Number)) | doc "A stream of images instead of a painting: frame k (row-major cell values) shows from `k * frame_sec` of simulated time, cycling." | optional,
     height | std.number.Integer,
     initial | Array (Number) | doc "Starting cell values in -1..1, row-major; empty for all zeros." | optional,
+    labels | Array (std.number.Integer) | doc "A label per frame (a digit's class, say), for readouts." | optional,
     max_uamps_per_square_cm | Number,
     name | String | doc "Shown as the window title; the painting is kept across reloads while the name and size stay the same.",
     taps | Array (SegmentRef) | doc "The segment under each cell, row-major (`width * height` of them).",
@@ -135,6 +138,10 @@ fun helpers => {
       type | Dyn,
       output | String,
     },
+    Canvas = {
+      type | Dyn,
+      name | String,
+    },
   },
 
   # What a model output drives.
@@ -157,6 +164,11 @@ fun helpers => {
       scale | Number,
       synapses | Array (std.number.Integer),
     },
+    TargetRate = {
+      type | Dyn,
+      scale_hz | Number,
+      taps | Array (SegmentRef),
+    },
     Ignore = {
       type | Dyn,
     },
@@ -165,6 +177,15 @@ fun helpers => {
   Neuron = {
     membranes | Array (Membrane),
     segments | Array (Segment),
+  },
+
+  # Score a population of cells against a canvas's frames: during each frame count every tap's spikes (upward crossings of `spike_threshold_mv`); the tap with the most is the answer, compared with the frame's label. The log shows the running agreement.
+  Readout = {
+    canvas | String | doc "The canvas whose frames and labels to score against.",
+    labeled | Bool | doc "Whether tap i answers label i (false: only compare the taps' rates with their teachers' target rates, for a hidden layer say)." | optional,
+    name | String,
+    spike_threshold_mv | Number,
+    taps | Array (SegmentRef) | doc "One segment per answer: tap i stands for label i.",
   },
 
   Receptor = {
@@ -179,6 +200,7 @@ fun helpers => {
     canvases | Array (Canvas) | doc "Grids of injected current painted in the Canvas window." | optional,
     models | Array (SceneModel) | doc "ONNX models coupled to the simulation." | optional,
     neurons | Array (SceneNeuron),
+    readouts | Array (Readout) | doc "Read a population's answer, frame by frame, from its spikes." | optional,
     synapses | Array (Synapse),
   },
 
@@ -248,6 +270,16 @@ fun helpers => {
     stimulator | Stimulator,
   },
 
+  # Supervised spike-based learning in the manner of ReSuMe (Ponulak & Kasinski 2010), with a target firing rate as the teacher. Each presynaptic spike adds 1 to a trace that decays with `pre_trace_sec`. While the postsynaptic segment has a target rate (a model's `TargetRate` output), the efficacy `rho` (0..1) grows by `learning_rate * pre_trace * target_hz * dt` and falls by `learning_rate * pre_trace` at each postsynaptic spike, so on average `d rho/dt = learning_rate * pre_trace * (target - actual rate)`: the delta rule, which stops once the cell fires as the teacher asks. Without a target nothing is learned. Receptors marked `plastic` have their conductance scaled by `weight_at_0 + rho (weight_at_1 - weight_at_0)`.
+  SupervisedPlasticity = {
+    initial_efficacy | Number,
+    learning_rate | Number,
+    pre_trace_sec | Number,
+    spike_threshold_mv | Number,
+    weight_at_0 | Number,
+    weight_at_1 | Number,
+  },
+
   Synapse = {
     post_neuron | std.number.Integer,
     post_segment | std.number.Integer,
@@ -263,6 +295,7 @@ fun helpers => {
     postsynaptic_receptors | Array (Receptor),
     presynaptic_pumps | Array (TransmitterPump),
     spike_timing | helpers.Nullable (SpikeTimingPlasticity) | doc "Pair-based spike-timing-dependent plasticity, an alternative to `plasticity` that needs no calcium." | optional,
+    supervised | helpers.Nullable (SupervisedPlasticity) | doc "Learning from a teacher's target rate (ReSuMe), the third choice." | optional,
     surface_area_square_mm | Number,
     transmitter_concentrations | TransmitterConcentrations,
   },
